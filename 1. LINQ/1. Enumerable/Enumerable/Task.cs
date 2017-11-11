@@ -35,7 +35,7 @@ namespace EnumerableTask
 		/// </example>
 		public IEnumerable<int> GetStringsLength(IEnumerable<string> data)
 		{
-             return data.Select(x => (x ?? "").Length);
+             return data.Select(x => (x??"").Length);
 		}
 
 		/// <summary>Transforms int sequence to its square sequence, f(x) = x * x </summary>
@@ -70,7 +70,9 @@ namespace EnumerableTask
 		/// </example>
 		public IEnumerable<long> GetMovingSumSequence(IEnumerable<int> data)
 		{
-            return data.Select((x, ind) => (long)data.Take(ind+1).Sum());
+            long total = 0;
+            var rData = data.Select(x => total+=x );
+            return rData;
 		}
 
 		/// <summary> Filters a string sequence by a prefix value (case insensitive)</summary>
@@ -94,7 +96,7 @@ namespace EnumerableTask
             {
                 throw new ArgumentNullException("prefix");
             }
-            return data.Where(x => x != null && (x.StartsWith(prefix, StringComparison.InvariantCultureIgnoreCase) || string.Equals(x,string.Empty) ));
+            return data.OfType<string>().Where(x=> x.StartsWith(prefix, StringComparison.InvariantCultureIgnoreCase));
 		}
 
 		/// <summary> Returns every second item from source sequence</summary>
@@ -126,7 +128,8 @@ namespace EnumerableTask
 		/// </example>
 		public IEnumerable<T> PropagateItemsByPositionIndex<T>(IEnumerable<T> data)
 		{
-            return data.SelectMany((x, ind) => Enumerable.Range(0, ind + 1).Select(z=>x));
+            var rData = data.SelectMany((x, ind) => Enumerable.Repeat(x,ind+1));
+            return rData;
 		}
 
 
@@ -144,7 +147,7 @@ namespace EnumerableTask
 		/// </example>
 		public IEnumerable<char> GetUsedChars(IEnumerable<string> data)
 		{
-            var rData = data.Where(w=>w!=null).SelectMany(x => x).Distinct();
+            var rData = data.OfType<string>().SelectMany(x => x).Distinct();
             return rData;
 		}
 
@@ -162,8 +165,10 @@ namespace EnumerableTask
 		/// </example>
 		public string GetStringOfSequence<T>(IEnumerable<T> data)
 		{
-            return string.Join(",", data.Select(x => (x?.ToString() ?? "null")));
-
+            var rData = data.Select(x => x?.ToString() ?? "null")
+                .DefaultIfEmpty(string.Empty)
+                .Aggregate((f,s)=>$"{f},{s}");
+            return rData;
         }
 
 		/// <summary> Finds the 3 largest numbers from a sequence</summary>
@@ -179,10 +184,10 @@ namespace EnumerableTask
 		///   { 10, 10, 10, 10 } => { 10, 10, 10 }
 		/// </example>
 		public IEnumerable<int> Get3TopItems(IEnumerable<int> data)
-		{
-            var rData = data.Where(w=> data.Distinct().OrderByDescending(x => x).Take(3).Contains(w) );
-            return rData.OrderByDescending(o=>o);
-		}
+		{            
+            var rData = data.Distinct().OrderByDescending(o => o).Take(3);
+            return rData;
+        }
 
 		/// <summary> Calculates the count of numbers that are greater then 10</summary>
 		/// <param name="data">source sequence</param>
@@ -212,7 +217,8 @@ namespace EnumerableTask
 		/// </example>
 		public string GetFirstContainsFirst(IEnumerable<string> data)
 		{
-            return data.FirstOrDefault(x => !string.IsNullOrEmpty(x) && x.ToLower().Contains("first"));
+            return data.OfType<string>()
+                .FirstOrDefault(x => x.IndexOf("first", StringComparison.CurrentCultureIgnoreCase)!=-1);
 		}
 
 		/// <summary> Counts the number of unique strings with length=3 </summary>
@@ -228,7 +234,7 @@ namespace EnumerableTask
 		/// </example>
 		public int GetCountOfStringsWithLengthEqualsTo3(IEnumerable<string> data)
 		{
-           var rData = data.Where(x => x?.Length == 3).GroupBy(x => x).Count();            
+            var rData = data.OfType<string>().Distinct().Count(c => c.Length == 3);
             return rData;
 		}
 
@@ -245,7 +251,9 @@ namespace EnumerableTask
 		/// </example>
 		public IEnumerable<Tuple<string, int>> GetCountOfStrings(IEnumerable<string> data)
 		{
-            var rData = data.GroupBy(x => x).Select(x => new Tuple<string, int>(x.Key, x.Count()));
+            var rData = data
+                .GroupBy(x => x)
+                .Select(x => new Tuple<string, int>(x.Key, x.Count()));
             return rData;
 		}
 
@@ -263,7 +271,11 @@ namespace EnumerableTask
 		/// </example>
 		public int GetCountOfStringsWithMaxLength(IEnumerable<string> data)
 		{
-            var rData = data.Count(c => (c??"").Length == data.Max(m => (m??"").Length));
+            int rData = data
+                .GroupBy(x => (x ?? "").Length)
+                .OrderByDescending(o => o.Key)
+                .Select(s => s.Count())
+                .ElementAtOrDefault(0);
             return rData;
 		}
 
@@ -281,11 +293,7 @@ namespace EnumerableTask
 		///    null => exception
 		/// </example>
 		public int GetDigitCharsCount(string data)
-		{
-            if (data == null)
-            {
-                throw new ArgumentNullException("data");
-            }            
+		{                      
             return data.Count(x => char.IsNumber(x));
 		}
 
@@ -313,7 +321,11 @@ namespace EnumerableTask
 		/// </example>
 		public int[] GetQuarterSales(IEnumerable<Tuple<DateTime, int>> sales)
 		{
-			throw new NotImplementedException();
+            var rData = new int[4]
+                .Select((v, index) => 
+                    sales.Where(w => ((w.Item1.Month - 1) / 3) == index)
+                    .Sum(s => s.Item2)).ToArray();
+            return rData;
 		}
 
 		/// <summary> Sorts string by length and alphabet </summary>
@@ -363,15 +375,10 @@ namespace EnumerableTask
 		/// </example>
 		public IEnumerable<string> SortDigitNamesByNumericOrder(IEnumerable<string> data)
 		{
-            if (!data.Any())
-            {
-                return data;
-            }
             string[] dgData = { "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine" };
-            var rData = data.Join(dgData.Select((value, index) => new { value, index }), (d) => d, (g) => g.value, (d, g) => new { index = g.index, value = d }).
-                OrderBy(x=>x.index).Select(x=>x.value).ToList();
+            var rData = dgData.Join(data.DefaultIfEmpty(), d1 => d1, d2 => d2, (d1, d2) => d1);
             return rData;
-		}
+        }
 
 		/// <summary> Combines numbers and fruits </summary>
 		/// <param name="numbers">string sequience of numbers</param>
@@ -388,9 +395,7 @@ namespace EnumerableTask
 		/// </example>
 		public IEnumerable<string> CombineNumbersAndFruits(IEnumerable<string> numbers, IEnumerable<string> fruits)
 		{
-            var rData = numbers.Select((value, index) => new { value, index }).Join(
-                fruits.Select((value, index) => new { value, index }),
-            (n) => n.index, (f) => f.index, (n, f) => $"{n.value} {f.value}").ToList();
+            var rData = numbers.Zip(fruits, (n, f) => $"{n} {f}");
             return rData;
 		}
 
@@ -483,7 +488,7 @@ namespace EnumerableTask
 		/// </example>
 		public bool IsSequenceHasNulls(IEnumerable<string> data)
 		{
-            var rData = data.OfType<string>().Count() != data.Count();
+            var rData = data.Count(x => x == null) > 0;
             return rData;
 		}
 
@@ -500,7 +505,8 @@ namespace EnumerableTask
 		/// </example>
 		public bool IsAllStringsAreUppercase(IEnumerable<string> data)
 		{
-            var rData = data.DefaultIfEmpty("a").All(x => x != string.Empty && string.Equals(x, x.ToUpper()));
+            var rData = data.DefaultIfEmpty("a")
+                .All(x => x != string.Empty && string.Equals(x, x.ToUpper()));
             return rData;            
 		}
 
@@ -559,8 +565,8 @@ namespace EnumerableTask
 		/// </example>
 		public string GetNextVersionFromList(IEnumerable<string> versions, string currentVersion)
 		{
-            var rData = versions.Reverse().SkipWhile(s => string.Equals(s, currentVersion)).Skip(1).Take(1);
-            return rData.FirstOrDefault();
+            var rData = versions.SkipWhile(s => !string.Equals(s, currentVersion)).Skip(1).FirstOrDefault();
+            return rData;
 		}
 
 		/// <summary>
@@ -578,7 +584,8 @@ namespace EnumerableTask
 		/// </example>
 		public IEnumerable<int> GetSumOfVectors(IEnumerable<int> vector1, IEnumerable<int> vector2)
 		{
-			
+            var rData = vector1.Zip(vector2, (v1, v2) => v1 + v2);
+            return rData;
 		}
 
 		/// <summary>
@@ -597,27 +604,29 @@ namespace EnumerableTask
 		/// </example>
 		public int GetProductOfVectors(IEnumerable<int> vector1, IEnumerable<int> vector2)
 		{
-			throw new NotImplementedException();
-		}
+            var rData = vector1.Zip(vector2, (v1, v2) => v1 * v2).Sum();
+            return rData;
+        }
 
-		/// <summary>
-		///   Finds all boy+girl pair
-		/// </summary>
-		/// <param name="boys">boys' names</param>
-		/// <param name="girls">girls' names</param>
-		/// <returns>
-		///   Returns all combination of boys and girls names 
-		/// </returns>
-		/// <example>
-		///  {"John", "Josh", "Jacob" }, {"Ann", "Alice"} => {"John+Ann","John+Alice", "Josh+Ann","Josh+Alice", "Jacob+Ann", "Jacob+Alice" }
-		///  {"John"}, {"Alice"} => {"John+Alice"}
-		///  {"John"}, { } => { }
-		///  { }, {"Alice"} => { }
-		/// </example>
-		public IEnumerable<string> GetAllPairs(IEnumerable<string> boys, IEnumerable<string> girls)
-		{
-			throw new NotImplementedException();
-		}
+        /// <summary>
+        ///   Finds all boy+girl pair
+        /// </summary>
+        /// <param name="boys">boys' names</param>
+        /// <param name="girls">girls' names</param>
+        /// <returns>
+        ///   Returns all combination of boys and girls names 
+        /// </returns>
+        /// <example>
+        ///  {"John", "Josh", "Jacob" }, {"Ann", "Alice"} => {"John+Ann","John+Alice", "Josh+Ann","Josh+Alice", "Jacob+Ann", "Jacob+Alice" }
+        ///  {"John"}, {"Alice"} => {"John+Alice"}
+        ///  {"John"}, { } => { }
+        ///  { }, {"Alice"} => { }
+        /// </example>
+        public IEnumerable<string> GetAllPairs(IEnumerable<string> boys, IEnumerable<string> girls)
+        {
+            var rData = boys.SelectMany(s => girls.Select(g => $"{s}+{g}"));
+            return rData;
+        }
 
 		/// <summary>
 		///   Calculates the average of all double values from object collection
@@ -634,7 +643,8 @@ namespace EnumerableTask
 		/// </example>
 		public double GetAverageOfDoubleValues(IEnumerable<object> data)
 		{
-			throw new NotImplementedException();
+            var rData = data.OfType<double>().DefaultIfEmpty(0).Average();
+            return rData;
 		}
 	}
 }
