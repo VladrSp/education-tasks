@@ -165,6 +165,9 @@ namespace EnumerableTask
         /// </example>
         public string GetStringOfSequence<T>(IEnumerable<T> data)
         {
+            // Вариант как это можно сделать немного проще и читабельнее, хотя смысл примерно одинаковый.
+            // return String.Join(",", data.Select(item => item == null ? "null" : item.ToString()));
+
             var rData = data.Select(x => x?.ToString() ?? "null")
                 .DefaultIfEmpty(string.Empty)
                 .Aggregate((f, s) => $"{f},{s}");
@@ -185,6 +188,10 @@ namespace EnumerableTask
         /// </example>
         public IEnumerable<int> Get3TopItems(IEnumerable<int> data)
         {
+            // Distinct тут нет необходимости использовать, а также он
+            // довольно затратный по ресурсам.
+            // return data.OrderByDescending(item => item).Take(3);
+
             var rData = data.Distinct().OrderByDescending(o => o).Take(3);
             return rData;
         }
@@ -294,6 +301,7 @@ namespace EnumerableTask
         /// </example>
         public int GetDigitCharsCount(string data)
         {
+            // Можно просто писать без лишнего кода data.Count(char.IsNumber);
             return data.Count(x => char.IsNumber(x));
         }
 
@@ -356,6 +364,8 @@ namespace EnumerableTask
         /// </example>
         public IEnumerable<char> GetMissingDigits(IEnumerable<string> data)
         {
+            // Для создания последовательности числе можно использовать Enumerable.Repeat
+            // return "0123456789".Except(data.SelectMany(item => item).Where(char.IsDigit));
             var allNumber = new char[] { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' };
             var rData = allNumber.Except(data.SelectMany(x => x.Where(w => char.IsNumber(w)).Select(z => z)));
             return rData;
@@ -412,6 +422,9 @@ namespace EnumerableTask
         /// </example>
         public IEnumerable<char> GetCommonChars(IEnumerable<string> data)
         {
+            // Эту задачу можно решить намного проще, без лишних методов в цепочке
+            // return data.Select(item => item.AsEnumerable()).DefaultIfEmpty().Aggregate((x, y) => x.Intersect(y)) ?? "";
+
             var rData = data.Select(x => x.ToCharArray().Distinct())
                 .SelectMany(m => m)
                 .GroupBy(c => c)
@@ -488,6 +501,9 @@ namespace EnumerableTask
         /// </example>
         public bool IsSequenceHasNulls(IEnumerable<string> data)
         {
+            // Тут ошибка про которую я рассказывал на лекции, ошибка с Count
+            // У тебя идёт пробежка по всему массиву, хотя если 0 элемент null то условие уже верно и можно закончить
+            // return data.Any(item => item == null);
             var rData = data.Count(x => x == null) > 0;
             return rData;
         }
@@ -505,6 +521,9 @@ namespace EnumerableTask
         /// </example>
         public bool IsAllStringsAreUppercase(IEnumerable<string> data)
         {
+            // Каждый раз приводить строку к большому виду будет довольно затратно,
+            // думаю проще бежать по коллекции и проверять является ли буква заглавно, так и итераций будет меньше.
+            // return data.SelectMany(item => item).DefaultIfEmpty().All(char.IsUpper);
             var rData = data.DefaultIfEmpty("a")
                 .All(x => x != string.Empty && string.Equals(x, x.ToUpper()));
             return rData;
