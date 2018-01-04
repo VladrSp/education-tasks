@@ -41,9 +41,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Task1\AddToDecrementTransform.cs" />
-    <Compile Include="Task1\AddToIncrementTransform.cs" />
-    <Compile Include="Task1\ReplaceParametersTypeVisitor.cs" />
+    <Compile Include="Task1\ParameterTransformVisitor.cs" />
     <Compile Include="Task2\Bar.cs" />
     <Compile Include="Task2\Beer.cs" />
     <Compile Include="Task2\Foo.cs" />
